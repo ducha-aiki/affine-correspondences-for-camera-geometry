@@ -52,13 +52,16 @@ endif (USE_OPENMP)
 # ==============================================================================
 # Find Eigen
 # ==============================================================================
-find_package(Eigen3 REQUIRED)
-set(EIGEN_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+
+#find_package(Eigen3 REQUIRED)
+set(EIGEN_INCLUDE_DIRS '/home/old-ufo/dev/affine-correspondences-for-camera-geometry/lib/Eigen/src')
 
 # ==============================================================================
 # VLFeat
 # ==============================================================================
 add_subdirectory(lib)
+
+
 
 # ==============================================================================
 # Includes
@@ -68,6 +71,8 @@ SET(SOURCE_DIR "src/pyrobustac")
 include_directories (
 	${PROJECT_SOURCE_DIR}/lib/graph-cut-ransac/src/pygcransac/include
 	${PROJECT_SOURCE_DIR}/lib
+	${PROJECT_SOURCE_DIR}/lib/Eigen/src
+	
 )
 
 # ==============================================================================
@@ -90,7 +95,7 @@ add_library(GraphCutRANSAC STATIC
 
 target_link_libraries(GraphCutRANSAC
 	${OpenCV_LIBS}
-        Eigen3::Eigen ${CMAKE_THREAD_LIBS_INIT}
+        ${CMAKE_THREAD_LIBS_INIT}
 )
 
 # ==============================================================================
@@ -123,7 +128,7 @@ pybind11_add_module(pyrobustac
 
 target_link_libraries(pyrobustac PRIVATE  
 	${OpenCV_LIBS} 
-	Eigen3::Eigen 
+	 
 	vlfeat
         GraphCutRANSAC ${CMAKE_THREAD_LIBS_INIT})
 	
@@ -134,7 +139,7 @@ add_library(${PROJECT_NAME} STATIC
 
 target_link_libraries (${PROJECT_NAME} 
 	${OpenCV_LIBS}
-	Eigen3::Eigen
+	
 	vlfeat
         GraphCutRANSAC ${CMAKE_THREAD_LIBS_INIT})
 	
@@ -151,7 +156,7 @@ if (CREATE_SAMPLE_PROJECT)
 				
 	target_link_libraries(SampleProject PUBLIC
 		${OpenCV_LIBS}
-		Eigen3::Eigen
+		
 		vlfeat
 		GraphCutRANSAC
 	)
