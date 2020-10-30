@@ -106,8 +106,9 @@ int findFundamentalMat_(
 	double ransacConfidence_,
 	int max_iters)
 {
-	typedef gcransac::utils::DefaultAffinityBasedFundamentalMatrixEstimator Estimator;
-	const size_t kCellNumberInNeighborhoodGraph = 8;
+	//typedef gcransac::utils::DefaultAffinityBasedFundamentalMatrixEstimator Estimator;
+	typedef gcransac::utils::DefaultFundamentalMatrixEstimator Estimator;
+    const size_t kCellNumberInNeighborhoodGraph = 8;
 
 	const size_t pointNumber = sourcePoints_.size() / 2; // The number of points in the scene
 	cv::Mat points(pointNumber, 8, CV_64F);
