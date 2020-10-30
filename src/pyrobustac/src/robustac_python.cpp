@@ -148,8 +148,10 @@ int findFundamentalMat_(
 	}
 
 	// Initialize the sampler used for selecting minimal samples
-	gcransac::sampler::ProsacSampler mainSampler(&points,
-		Estimator::sampleSize());
+	//gcransac::sampler::ProsacSampler mainSampler(&points,
+	//	Estimator::sampleSize());
+    gcransac::sampler::UniformSampler mainSampler(&points);
+    
 	gcransac::sampler::UniformSampler localOptimizationSampler(&points);
 
 	// Deciding if affine correspondences are used based on the template parameter
@@ -157,21 +159,19 @@ int findFundamentalMat_(
 
 	// Defining the combined (SPRT + uncertainty propagation) preemption type based on 
 	// whether affine or point correspondences are used
-	typedef gcransac::preemption::CombinedPreemptiveVerfication<kUsingAffineCorrespondences,
-		Estimator, // The solver used for fitting a model to a non-minimal sample
-		gcransac::preemption::FundamentalMatrixUncertaintyBasedPreemption<kUsingAffineCorrespondences, Estimator>> // The type used for uncertainty propagation
-		CombinedPreemptiveVerification;
+	typedef gcransac::preemption::EmptyPreemptiveVerfication<Estimator> // The type used for uncertainty propagation
+		EmptyPreemptiveVerfication;
 
 	// Initializing the preemptive verification object
-	CombinedPreemptiveVerification preemptiveVerification;
-	preemptiveVerification.initialize(
-		points,
-		estimator);
+	gcransac::preemption::EmptyPreemptiveVerfication<Estimator> preemptiveVerification;
+	//preemptiveVerification.initialize(
+	//	points,
+	//	estimator);
 
 	gcransac::GCRANSAC<Estimator,
 		gcransac::neighborhood::GridNeighborhoodGraph,
 		gcransac::MSACScoringFunction<Estimator>,
-		CombinedPreemptiveVerification> gcransac;
+		EmptyPreemptiveVerfication> gcransac;
 	gcransac.settings.threshold = inlierOutlierThreshold_; // The inlier-outlier threshold
 	gcransac.settings.spatial_coherence_weight = spatialCoherenceWeight_; // The weight of the spatial coherence term
 	gcransac.settings.confidence = ransacConfidence_; // The required confidence in the results
