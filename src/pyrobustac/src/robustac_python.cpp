@@ -106,9 +106,7 @@ int findFundamentalMat_(
 	double ransacConfidence_,
 	int max_iters)
 {
-	//typedef gcransac::utils::DefaultAffinityBasedFundamentalMatrixEstimator Estimator;
-	typedef gcransac::utils::DefaultFundamentalMatrixEstimator Estimator;
-    const size_t kCellNumberInNeighborhoodGraph = 8;
+	typedef gcransac::utils::DefaultAffinityBasedFundamentalMatrixEstimator Estimator;
 
 	const size_t pointNumber = sourcePoints_.size() / 2; // The number of points in the scene
 	cv::Mat points(pointNumber, 8, CV_64F);
@@ -124,22 +122,12 @@ int findFundamentalMat_(
 		points.at<double>(i, 6) = affinities_[4 * i + 2];
 		points.at<double>(i, 7) = affinities_[4 * i + 3];
 	}
+	
+	// Initialize the neighborhood used in Graph-cut RANSAC
+	gcransac::neighborhood::FlannNeighborhoodGraph neighborhoodGraph(&points(cv::Rect(0, 0, 4, pointNumber)), // All data points
+		20.0); // The radius of the neighborhood ball for determining the neighborhoods.
 
-	neighborhood::GridNeighborhoodGraph neighborhoodGraph(&points,
-		sourceImageWidth_ / static_cast<double>(kCellNumberInNeighborhoodGraph),
-		sourceImageHeight_ / static_cast<double>(kCellNumberInNeighborhoodGraph),
-		destinationImageWidth_ / static_cast<double>(kCellNumberInNeighborhoodGraph),
-		destinationImageHeight_ / static_cast<double>(kCellNumberInNeighborhoodGraph),
-		kCellNumberInNeighborhoodGraph);
-
-	// Checking if the neighborhood graph is initialized successfully.
-	if (!neighborhoodGraph.isInitialized())
-	{
-		fprintf(stderr, "The neighborhood graph is not initialized successfully.\n");
-		return 0;
-	};
-
-	Estimator estimator;
+	Estimator estimator(0.5, false);
 	FundamentalMatrix model;
 
 	if (pointNumber < estimator.sampleSize()) // If there are no points, return
@@ -149,33 +137,37 @@ int findFundamentalMat_(
 	}
 
 	// Initialize the sampler used for selecting minimal samples
-	//gcransac::sampler::ProsacSampler mainSampler(&points,
-	//	Estimator::sampleSize());
-    gcransac::sampler::UniformSampler mainSampler(&points);
-    
+	gcransac::sampler::UniformSampler mainSampler(&points/*,
+		Estimator::sampleSize()*/);
 	gcransac::sampler::UniformSampler localOptimizationSampler(&points);
 
 	// Deciding if affine correspondences are used based on the template parameter
-	constexpr size_t kUsingAffineCorrespondences = 1;
+	/*constexpr size_t kUsingAffineCorrespondences = 1;
 
 	// Defining the combined (SPRT + uncertainty propagation) preemption type based on 
 	// whether affine or point correspondences are used
-	typedef gcransac::preemption::EmptyPreemptiveVerfication<Estimator> // The type used for uncertainty propagation
-		EmptyPreemptiveVerfication;
+	typedef gcransac::preemption::CombinedPreemptiveVerfication<kUsingAffineCorrespondences,
+		Estimator, // The solver used for fitting a model to a non-minimal sample
+		gcransac::preemption::FundamentalMatrixUncertaintyBasedPreemption<kUsingAffineCorrespondences, Estimator>> // The type used for uncertainty propagation
+		CombinedPreemptiveVerification;*/
 
 	// Initializing the preemptive verification object
-	gcransac::preemption::EmptyPreemptiveVerfication<Estimator> preemptiveVerification;
-	//preemptiveVerification.initialize(
-	//	points,
-	//	estimator);
+	gcransac::preemption::SPRTPreemptiveVerfication<Estimator> preemptiveVerification(
+		points,
+		estimator);
+	/*preemptiveVerification.initialize(
+		points,
+		estimator);*/
 
 	gcransac::GCRANSAC<Estimator,
-		gcransac::neighborhood::GridNeighborhoodGraph,
+		gcransac::neighborhood::FlannNeighborhoodGraph,
 		gcransac::MSACScoringFunction<Estimator>,
-		EmptyPreemptiveVerfication> gcransac;
+		gcransac::preemption::SPRTPreemptiveVerfication<Estimator>> gcransac;
 	gcransac.settings.threshold = inlierOutlierThreshold_; // The inlier-outlier threshold
-	gcransac.settings.spatial_coherence_weight = spatialCoherenceWeight_; // The weight of the spatial coherence term
+	gcransac.settings.spatial_coherence_weight = 0.0; // The weight of the spatial coherence term
 	gcransac.settings.confidence = ransacConfidence_; // The required confidence in the results
+	gcransac.settings.max_local_optimization_number = 50; // The maximum number of iterations
+	gcransac.settings.min_iteration_number = 50; // The maximum number of iterations
 	gcransac.settings.max_iteration_number = max_iters; // The maximum number of iterations
 
 	std::chrono::time_point<std::chrono::system_clock> end,
@@ -188,7 +180,7 @@ int findFundamentalMat_(
 		model,
 		preemptiveVerification);
 	end = std::chrono::system_clock::now();
-
+	 
 	std::chrono::duration<double> elapsedSeconds = end - start;
 	std::time_t endTime = std::chrono::system_clock::to_time_t(end);
 
